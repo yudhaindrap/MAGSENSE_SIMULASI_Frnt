@@ -16,7 +16,7 @@ import {
     Zap
 } from 'lucide-react';
 
-const socket = io('http://localhost:5000');
+const socket = io('http://192.168.1.7:5000');
 
 export default function Dashboard() {
     const [staticData, setStaticData] = useState({
@@ -30,7 +30,7 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
 
         const fetchSummary = () => {
-            axios.get('http://localhost:5000/api/dashboard', {
+            axios.get('http://192.168.1.7:5000/api/dashboard', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
@@ -42,7 +42,7 @@ export default function Dashboard() {
             .catch(err => console.error("Dashboard API Error:", err));
         };
 
-        axios.get('http://localhost:5000/api/history', {
+        axios.get('http://192.168.1.7:5000/api/history', {
             headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => {

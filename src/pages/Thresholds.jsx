@@ -12,7 +12,7 @@ import {
 export default function Thresholds() {
   const [form, setForm] = useState({
     tempMin: 25.0,
-    tempMax: 32.0,
+    tempMax: 35.0,
     mediaMin: 40.0,
     mediaMax: 65.0,
     humAirMin: 60.0,

@@ -2,10 +2,10 @@
 import { useState } from 'react';
 import { 
   Thermometer, Droplets, Fan, AlertTriangle, 
-  Activity, Zap, Box as BoxIcon 
+  Activity, Zap, Box as BoxIcon, Power, Lightbulb 
 } from 'lucide-react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 
@@ -19,15 +19,17 @@ const chartData = [
   { time: '20:00', temp: 27, hum: 72 },
 ];
 
+// 1. DAFTAR AKTUATOR DIPERBARUI (Menambahkan Lampu Heater)
+const AVAILABLE_ACTUATORS = ['Kipas Exhaust', 'Solenoid Valve', 'Lampu Heater'];
+
 export default function Monitoring() {
-  // 1. Data diperluas menjadi 3 box
-  const [boxes] = useState([
+  const [boxes, setBoxes] = useState([
     {
       id: 1, floor: 1, 
       temp: 28.5, tempStatus: 'normal',
       humidity: 70.2, humStatus: 'normal',
       media: 45.0, mediaStatus: 'warning',
-      activeActuators: ['Solenoid Valve #1']
+      activeActuators: ['Solenoid Valve']
     },
     {
       id: 2, floor: 2, 
@@ -38,15 +40,51 @@ export default function Monitoring() {
     },
     {
       id: 3, floor: 3, 
-      temp: 29.1, tempStatus: 'normal',
+      temp: 24.1, tempStatus: 'normal', // Suhu sengaja rendah untuk simulasi heater
       humidity: 68.5, humStatus: 'normal',
       media: 58.0, mediaStatus: 'normal',
-      activeActuators: []
+      activeActuators: ['Lampu Heater'] // Default aktif di box 3
     }
   ]);
 
+  // Fungsi untuk menyalakan/mematikan aktuator secara manual
+  const handleToggleActuator = (boxId, actuatorName) => {
+    setBoxes((prevBoxes) =>
+      prevBoxes.map((box) => {
+        if (box.id === boxId) {
+          const isExist = box.activeActuators.includes(actuatorName);
+          return {
+            ...box,
+            activeActuators: isExist
+              ? box.activeActuators.filter((act) => act !== actuatorName)
+              : [...box.activeActuators, actuatorName],
+          };
+        }
+        return box;
+      })
+    );
+  };
+
+  // Fungsi Helper untuk memberikan Icon yang sesuai pada masing-masing Aktuator
+  const renderActuatorIcon = (name) => {
+    switch (name) {
+      case 'Kipas Exhaust':
+        return <Fan size={12} className="animate-spin" />;
+      case 'Solenoid Valve':
+        return <Droplets size={12} />;
+      case 'Lampu Heater':
+        return <Lightbulb size={12} className="animate-pulse text-amber-300" />;
+      default:
+        return <Zap size={12} />;
+    }
+  };
+
+  // Hitung statistik secara dinamis
+  const averageTemp = (boxes.reduce((acc, box) => acc + box.temp, 0) / boxes.length).toFixed(1);
+  const totalActiveActuators = boxes.reduce((acc, box) => acc + box.activeActuators.length, 0);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mb-10">
       {/* SECTION 1: RINGKASAN STATISTIK */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -64,7 +102,7 @@ export default function Monitoring() {
           </div>
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Rerata Suhu</p>
-            <p className="text-2xl font-black text-slate-800">30.0 °C</p>
+            <p className="text-2xl font-black text-slate-800">{averageTemp} °C</p>
           </div>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -73,7 +111,7 @@ export default function Monitoring() {
           </div>
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Aktuator Aktif</p>
-            <p className="text-2xl font-black text-slate-800">2 Perangkat</p>
+            <p className="text-2xl font-black text-slate-800">{totalActiveActuators} Perangkat</p>
           </div>
         </div>
       </div>
@@ -108,7 +146,7 @@ export default function Monitoring() {
         </div>
       </div>
 
-      {/* SECTION 3: GRID BOX MONITORING (3 BOX) */}
+      {/* SECTION 3: GRID BOX MONITORING */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {boxes.map((box) => (
           <div key={box.id} className={`bg-white p-6 rounded-2xl shadow-sm border-t-4 transition-all hover:shadow-md ${box.tempStatus === 'warning' || box.mediaStatus === 'warning' ? 'border-orange-500' : 'border-emerald-500'}`}>
@@ -119,8 +157,8 @@ export default function Monitoring() {
               {box.tempStatus === 'warning' && <AlertTriangle className="text-orange-500 animate-pulse" size={20}/>}
             </div>
             
+            {/* Sensor Data */}
             <div className="space-y-5">
-              {/* Suhu */}
               <div className="flex justify-between items-center group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
@@ -133,7 +171,6 @@ export default function Monitoring() {
                 </span>
               </div>
 
-              {/* Kel. Udara */}
               <div className="flex justify-between items-center group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
@@ -146,7 +183,6 @@ export default function Monitoring() {
                 </span>
               </div>
 
-              {/* Kel. Media */}
               <div className="flex justify-between items-center group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-orange-50 transition-colors">
@@ -160,14 +196,14 @@ export default function Monitoring() {
               </div>
             </div>
 
-            {/* Aktuator Section */}
+            {/* Status Aktuator Terkini (Menggunakan fungsi dinamis pendeteksi icon) */}
             <div className="mt-6 pt-4 border-t border-slate-100">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Status Aktuator</p>
               {box.activeActuators.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {box.activeActuators.map((act, idx) => (
                     <span key={idx} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm shadow-emerald-100">
-                      <Fan size={12} className="animate-spin"/> {act}
+                      {renderActuatorIcon(act)} {act}
                     </span>
                   ))}
                 </div>
@@ -178,6 +214,38 @@ export default function Monitoring() {
                 </div>
               )}
             </div>
+
+            {/* KONTROL MANUAL DEVICE (Diubah menjadi flex-wrap agar muat 3 tombol) */}
+            <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-6 -mb-6 p-6 rounded-b-2xl">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+                <Power size={10} /> Kontrol Manual Device
+              </p>
+              <div className="flex flex-col gap-2">
+                {AVAILABLE_ACTUATORS.map((actuator) => {
+                  const isActive = box.activeActuators.includes(actuator);
+                  return (
+                    <button
+                      key={actuator}
+                      onClick={() => handleToggleActuator(box.id, actuator)}
+                      className={`flex items-center justify-between gap-2 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 ${
+                        isActive
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-100'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {actuator === 'Lampu Heater' && <Lightbulb size={14} className={isActive ? 'text-amber-500' : 'text-slate-400'} />}
+                        {actuator === 'Kipas Exhaust' && <Fan size={14} className={isActive ? 'text-emerald-500' : 'text-slate-400'} />}
+                        {actuator === 'Solenoid Valve' && <Droplets size={14} className={isActive ? 'text-blue-500' : 'text-slate-400'} />}
+                        <span>{actuator}</span>
+                      </div>
+                      <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         ))}
       </div>
