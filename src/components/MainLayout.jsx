@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Bell,
   User,
-  Smartphone // <-- Tambahkan icon Smartphone
+  Smartphone
 } from 'lucide-react';
 
 // Mengimpor logo dari folder assets
@@ -24,15 +24,6 @@ const Sidebar = ({ setToken }) => {
     { path: '/', name: 'Dashboard', icon: LayoutDashboard },
     { path: '/monitoring', name: 'Mikroklimat', icon: Thermometer },
     { path: '/growth', name: 'Fase Pertumbuhan', icon: Camera },
-
-    // HANYA MUNCUL DI MOBILE
-    {
-      path: '/camera',
-      name: 'Kirim Stream',
-      icon: Smartphone,
-      mobileOnly: true,
-    },
-
     { path: '/prediction', name: 'Prediksi Panen', icon: CalendarClock },
     { path: '/history', name: 'Riwayat Data', icon: History },
     { path: '/thresholds', name: 'Parameter Ambang', icon: Settings },
@@ -46,18 +37,26 @@ const Sidebar = ({ setToken }) => {
   return (
     <nav
       className="
-        group fixed z-50 bg-white border-slate-200 transition-all duration-300 ease-in-out
+        group fixed z-50 transition-all duration-300 ease-in-out
 
-        /* MOBILE: Bottom Navigation */
-        bottom-0 left-0 w-full h-16 border-t flex flex-row justify-around items-center px-2
-        shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]
+        /* MOBILE: Floating Transparent Bottom Navigation (Glassmorphism) */
+        bottom-4 left-4 right-4 h-16 flex flex-row justify-between items-center px-4
+        rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md
+        shadow-[0_10px_30px_-5px_rgba(0,0,0,0.08)]
 
-        /* DESKTOP: Sidebar */
-        md:relative md:h-screen md:border-t-0 md:border-r
+        /* DESKTOP: Sidebar Reset (Kembali solid/tidak transparan) */
+        md:relative md:bottom-auto md:left-auto md:right-auto md:h-screen 
+        md:rounded-none md:border-0 md:border-r md:border-slate-200 md:shadow-none
+        md:bg-white md:backdrop-blur-none
         md:flex-col md:p-4 md:w-20 md:hover:w-64
         md:items-start overflow-hidden
       "
     >
+      {/* CSS Injection untuk menyembunyikan scrollbar di mobile navbar */}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
       {/* LOGO SECTION */}
       <div className="hidden md:flex items-center gap-3 mb-8 w-full">
@@ -75,7 +74,7 @@ const Sidebar = ({ setToken }) => {
       </div>
 
       {/* MENU NAVIGASI */}
-      <div className="flex flex-row md:flex-col w-full gap-1 md:gap-2 justify-around md:justify-start md:flex-1 md:overflow-y-auto custom-scrollbar">
+      <div className="flex flex-row md:flex-col flex-1 gap-2 justify-start items-center md:items-stretch overflow-x-auto md:overflow-y-auto no-scrollbar h-full md:h-auto md:w-full md:flex-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -86,17 +85,17 @@ const Sidebar = ({ setToken }) => {
               to={item.path}
               title={item.name}
               className={`
-                flex items-center p-2 md:p-3 rounded-xl transition-all duration-200
+                flex items-center p-2.5 md:p-3 rounded-xl transition-all duration-200 flex-shrink-0
 
                 ${
                   isActive
                     ? 'bg-emerald-600 text-white md:shadow-lg md:shadow-emerald-200'
-                    : 'text-slate-500 hover:bg-slate-100'
+                    : 'text-slate-500 hover:bg-slate-100/60 md:hover:bg-slate-100'
                 }
 
                 ${
                   item.mobileOnly
-                    ? 'flex md:hidden' // hanya tampil di mobile
+                    ? 'flex md:hidden'
                     : ''
                 }
               `}
@@ -114,11 +113,11 @@ const Sidebar = ({ setToken }) => {
       </div>
 
       {/* TOMBOL LOGOUT */}
-      <div className="md:mt-auto md:pt-4 md:border-t border-slate-100 md:w-full">
+      <div className="flex items-center h-full pl-3 border-l border-slate-200/60 flex-shrink-0 md:h-auto md:w-full md:mt-auto md:pt-4 md:border-t md:border-l-0 md:border-slate-100">
         <button
           onClick={handleLogout}
           title="Logout"
-          className="flex items-center p-2 md:p-3 md:w-full rounded-xl text-red-500 hover:bg-red-50 transition-colors group/logout"
+          className="flex items-center p-2.5 md:p-3 md:w-full rounded-xl text-red-500 hover:bg-red-50 transition-colors group/logout"
         >
           <div className="flex items-center justify-center min-w-[24px]">
             <LogOut
@@ -143,10 +142,6 @@ const MainLayout = ({ setToken }) => {
     { path: '/', name: 'Dashboard' },
     { path: '/monitoring', name: 'Monitoring Mikroklimat' },
     { path: '/growth', name: 'Analisis Fase Pertumbuhan' },
-
-    // Tracking title untuk halaman camera
-    { path: '/camera', name: 'Kirim Stream Kamera (HP)' },
-
     { path: '/prediction', name: 'Estimasi Prediksi Panen' },
     { path: '/history', name: 'Riwayat Log Data' },
     { path: '/thresholds', name: 'Pengaturan Ambang Otomasi' },
@@ -166,7 +161,7 @@ const MainLayout = ({ setToken }) => {
 
       <Sidebar setToken={setToken} />
 
-      <div className="flex-1 flex flex-col min-w-0 h-full pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full pb-24 md:pb-0">
 
         {/* HEADER */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 z-10 px-4 md:px-8 py-3 sticky top-0">

@@ -1,19 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const BACKEND_IP = "192.168.1.7"; // ⚠️ GANTI DENGAN IP LAPTOPMU
+const BACKEND_IP = "192.168.18.228"; // ⚠️ GANTI DENGAN IP LAPTOPMU
 
 export default function CameraSender() {
   const localVideoRef = useRef(null);
   const peerConnection = useRef(null);
   const socket = useRef(null);
+  const streamRef = useRef(null);
   const [status, setStatus] = useState("Siap");
+
+  // Pembersihan otomatis saat komponen ditutup/unmount
+  useEffect(() => {
+    return () => {
+      stopStream();
+    };
+  }, []);
+
+  const stopStream = () => {
+    if (socket.current) {
+      socket.current.disconnect();
+      socket.current = null;
+    }
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
 
   const startStream = async () => {
     try {
+      // Bersihkan koneksi lama terlebih dahulu jika ada klik ganda
+      stopStream();
+
       setStatus("Membuka Kamera...");
-      // 1. Konek ke Signaling Server (Express)
-      socket.current = io(`http://${BACKEND_IP}:5000`);
+      
+      // 1. Konek ke Python AI Server (Port 5002)
+      socket.current = io(`http://${BACKEND_IP}:5002`);
 
       // 2. Ambil Kamera Belakang HP tanpa Audio
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -21,6 +48,7 @@ export default function CameraSender() {
         audio: false
       });
       
+      streamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
       // 3. Inisialisasi WebRTC Peer Connection
@@ -35,7 +63,7 @@ export default function CameraSender() {
 
       // 5. Kirim ICE Candidate jika ditemukan jalur jaringan
       peerConnection.current.onicecandidate = (event) => {
-        if (event.candidate) {
+        if (event.candidate && socket.current) {
           socket.current.emit("webrtc-candidate", event.candidate);
         }
       };
@@ -46,14 +74,28 @@ export default function CameraSender() {
       socket.current.emit("webrtc-offer", offer);
       setStatus("Streaming Berjalan... Cek Dashboard di Laptop!");
 
-      // 7. Dengarkan Jawaban (Answer) dari Laptop
+      // 7. Dengarkan Jawaban (Answer) dari Laptop/Python
       socket.current.on("webrtc-answer", async (answer) => {
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+        try {
+          // PENGAMAN: Hanya set remote description jika state lokal memang sedang menunggu penawaran (have-local-offer)
+          if (peerConnection.current && peerConnection.current.signalingState === "have-local-offer") {
+            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+          }
+        } catch (err) {
+          console.error("Gagal memproses remote description (answer):", err);
+        }
       });
 
-      // 8. Dengarkan kandidat jalur dari Laptop
+      // 8. Dengarkan kandidat jalur dari Laptop/Python
       socket.current.on("webrtc-candidate", async (candidate) => {
-        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        try {
+          // PENGAMAN: Hanya tambahkan ICE candidate jika deskripsi remote (miliki laptop) sudah selesai dikonfigurasi
+          if (peerConnection.current && peerConnection.current.remoteDescription) {
+            await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+        } catch (err) {
+          console.error("Gagal menambahkan ICE candidate:", err);
+        }
       });
 
     } catch (err) {

@@ -13,10 +13,12 @@ import {
     User,
     Activity,
     Wind,
-    Zap
+    Zap,
+    MapPin, // Tambahan untuk ikon lokasi
+    X       // Tambahan untuk ikon tutup modal
 } from 'lucide-react';
 
-const socket = io('http://192.168.1.7:5000');
+const socket = io('http://192.168.1.27:5000');
 
 export default function Dashboard() {
     const [staticData, setStaticData] = useState({
@@ -26,11 +28,42 @@ export default function Dashboard() {
 
     const [realtimeBox, setRealtimeBox] = useState(null);
 
+    /* ========================================================
+       STATE & HANDLER TAMBAHAN UNTUK PINDAH RUANG (PILIHAN 2)
+       ======================================================== */
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedBox, setSelectedBox] = useState(null);
+    const [tempRoom, setTempRoom] = useState('');
+
+    const openMoveModal = (box) => {
+        setSelectedBox(box);
+        setTempRoom(box.room || 'Ruang 2'); // Default fallback jika data ruang belum ada di database
+        setIsModalOpen(true);
+    };
+
+    const handleSaveLocation = () => {
+        // Mengubah state summary lokal secara langsung agar UI langsung ter-update saat simulasi
+        setStaticData(prev => ({
+            ...prev,
+            summary: prev.summary.map(b => b.box_id === selectedBox.box_id ? { ...b, room: tempRoom } : b)
+        }));
+        
+        setIsModalOpen(false);
+        console.log(`Box #${selectedBox.box_id} berhasil dipindahkan ke ${tempRoom}`);
+        
+        // CATATAN: Jika backend route sudah siap, kamu tinggal mengaktifkan baris di bawah ini:
+        // const token = localStorage.getItem("token");
+        // axios.put(`http://192.168.1.7:5000/api/boxes/${selectedBox.box_id}/room`, { room: tempRoom }, {
+        //     headers: { Authorization: `Bearer ${token}` }
+        // }).catch(err => console.error(err));
+    };
+    /* ======================================================== */
+
     useEffect(() => {
         const token = localStorage.getItem("token");
 
         const fetchSummary = () => {
-            axios.get('http://192.168.1.7:5000/api/dashboard', {
+            axios.get('http://192.168.18.228:5000/api/dashboard', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
@@ -42,7 +75,7 @@ export default function Dashboard() {
             .catch(err => console.error("Dashboard API Error:", err));
         };
 
-        axios.get('http://192.168.1.7:5000/api/history', {
+        axios.get('http://192.168.18.228:5000/api/history', {
             headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => {
@@ -79,7 +112,7 @@ export default function Dashboard() {
     }, []);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500 relative">
 
             {/* ALERT CRITICAL */}
             {staticData.critical_alerts.length > 0 && (
@@ -106,8 +139,24 @@ export default function Dashboard() {
                         staticData.summary.map(box => (
                             <div key={box.box_id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-center mb-4">
-                                    <span className="text-xs font-black text-slate-400 uppercase">Box Unit</span>
-                                    <h3 className="text-xl font-bold text-emerald-700">#{box.box_id}</h3>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-black text-slate-400 uppercase">Box Unit</span>
+                                        {/* Label Nama Ruangan Aktif */}
+                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md mt-0.5 w-max">
+                                            {box.room || 'Ruang 2'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xl font-bold text-emerald-700">#{box.box_id}</h3>
+                                        {/* Tombol Aksi Pindah Ruang */}
+                                        <button 
+                                            onClick={() => openMoveModal(box)}
+                                            title="Pindahkan Ruangan"
+                                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"
+                                        >
+                                            <MapPin size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
@@ -243,6 +292,61 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* POP-UP MODAL PINDAH RUANG (TAMBAHAN ELEMEN BARU) */}
+            {isModalOpen && selectedBox && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100 mx-4 space-y-4">
+                        
+                        {/* Header Modal */}
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
+                                <MapPin size={20} className="text-emerald-600" />
+                                Pindahkan Posisi Box #{selectedBox.box_id}
+                            </h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Konten Dropdown Form */}
+                        <div className="space-y-3">
+                            <p className="text-sm text-slate-500">
+                                Pilih lokasi penempatan ruangan baru untuk unit box ini. Proses pencatatan histori data sensor tidak akan terputus.
+                            </p>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Pilih Ruangan</label>
+                                <select
+                                    value={tempRoom}
+                                    onChange={(e) => setTempRoom(e.target.value)}
+                                    className="w-full p-3 border rounded-xl bg-white text-sm font-medium outline-none focus:border-emerald-600 cursor-pointer shadow-sm"
+                                >
+                                    <option value="Ruang 1">Ruang 1 (Pembibitan)</option>
+                                    <option value="Ruang 2">Ruang 2 (Pembesaran A)</option>
+                                    <option value="Ruang 3">Ruang 3 (Pembesaran B)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Tombol Konfirmasi */}
+                        <div className="flex gap-3 pt-2">
+                            <button 
+                                onClick={() => setIsModalOpen(false)}
+                                className="flex-1 py-2.5 border rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                onClick={handleSaveLocation}
+                                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors"
+                            >
+                                Simpan Posisi
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

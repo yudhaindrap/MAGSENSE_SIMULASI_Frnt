@@ -16,7 +16,7 @@ export default function Login({ setToken }) {
         setIsLoading(true);
         setError('');
         try {
-            const res = await axios.post('http://192.168.1.7:5000/api/auth/login', form);
+            const res = await axios.post('http://192.168.18.228:5000/api/auth/login', form);
             localStorage.setItem('token', res.data.token);
             setToken(res.data.token);
         } catch (err) {

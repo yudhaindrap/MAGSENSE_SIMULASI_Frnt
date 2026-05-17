@@ -2,71 +2,47 @@ import { useState, useEffect, useRef } from 'react';
 import { Camera, PlayCircle, Bug } from 'lucide-react';
 import { io } from 'socket.io-client';
 
-const BACKEND_IP = "192.168.1.7"; // ⚠️ GANTI DENGAN IP LAPTOPMU
+const BACKEND_IP = "192.168.18.228"; // ⚠️ GANTI DENGAN IP LAPTOPMU
 
 export default function Growth() {
   const [selectedCamera, setSelectedCamera] = useState('Lantai 2');
   const [isStreaming, setIsStreaming] = useState(false);
-  const remoteVideoRef = useRef(null);
-  const peerConnection = useRef(null);
-  const socket = useRef(null);
-
-  // Mock Data YOLOv8
-  const detectionData = {
-    time: "10:00 WIB",
-    babyLarva: 12,
-    adultLarva: 45,
-    prepupa: 10,
+  const [aiVideo, setAiVideo] = useState(null);
+  
+  // Menghubungkan state ke data real-time dari Python AI
+  const [detectionData, setDetectionData] = useState({
+    time: "--:-- WIB",
+    babyLarva: 0,
+    adultLarva: 0,
+    prepupa: 0,
     pupa: 0,
-    dominant: "ADULT LARVA"
-  };
+    dominant: "-"
+  });
+
+  const socket = useRef(null);
 
   useEffect(() => {
     if (isStreaming) {
-      // 1. Konek ke Signaling Server
-      socket.current = io(`http://${BACKEND_IP}:5000`);
+      // 1. Konek ke Server Python AI (Port 5002)
+      socket.current = io(`http://${BACKEND_IP}:5002`);
 
-      // 2. Buat WebRTC Instance untuk Menerima Video
-      peerConnection.current = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      // 2. Terima data statistik deteksi objek
+      socket.current.on("detection-data", (data) => {
+        setDetectionData(data);
       });
 
-      // 3. Jika dapat track video dari HP, pasang ke tag <video>
-      peerConnection.current.ontrack = (event) => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-        }
-      };
-
-      // 4. Kirim balik ICE Candidate laptop ke HP
-      peerConnection.current.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.current.emit("webrtc-candidate", event.candidate);
-        }
-      };
-
-      // 5. Terima penawaran (Offer) dari HP, lalu buat Jawaban (Answer)
-      socket.current.on("webrtc-offer", async (offer) => {
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.current.createAnswer();
-        await peerConnection.current.setLocalDescription(answer);
-        socket.current.emit("webrtc-answer", answer);
-      });
-
-      // 6. Terima Kandidate jalur dari HP
-      socket.current.on("webrtc-candidate", async (candidate) => {
-        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      // 3. Terima frame gambar ber-box dari YOLOv8
+      socket.current.on("video-frame", (imageSrc) => {
+        setAiVideo(imageSrc);
       });
 
     } else {
-      // Jika stream dimatikan, putus koneksi
       if (socket.current) socket.current.disconnect();
-      if (peerConnection.current) peerConnection.current.close();
+      setAiVideo(null);
     }
 
     return () => {
       if (socket.current) socket.current.disconnect();
-      if (peerConnection.current) peerConnection.current.close();
     };
   }, [isStreaming]);
 
@@ -96,12 +72,15 @@ export default function Growth() {
         {/* Video Player Area */}
         <div className="lg:col-span-2 bg-slate-900 rounded-2xl aspect-video flex flex-col items-center justify-center text-slate-500 border-4 border-slate-800 overflow-hidden relative">
           {isStreaming ? (
-            <video 
-              ref={remoteVideoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full h-full object-cover absolute inset-0"
-            />
+            aiVideo ? (
+              <img 
+                src={aiVideo} 
+                alt="Live AI Stream" 
+                className="w-full h-full object-cover absolute inset-0" 
+              />
+            ) : (
+              <p className="animate-pulse text-slate-400">Menunggu stream dari kamera...</p>
+            )
           ) : (
             <>
               <Camera size={48} className="mb-4 opacity-50" />

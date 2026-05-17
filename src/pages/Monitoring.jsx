@@ -33,7 +33,7 @@ export default function Monitoring() {
     },
     {
       id: 2, floor: 2, 
-      temp: 32.5, tempStatus: 'warning',
+      temp: 37.5, tempStatus: 'warning',
       humidity: 75.0, humStatus: 'normal',
       media: 62.0, mediaStatus: 'normal',
       activeActuators: ['Kipas Exhaust']
