@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const BACKEND_IP = "192.168.18.228"; // ⚠️ GANTI DENGAN IP LAPTOPMU
+const BACKEND_IP = "192.168.1.105"; // ⚠️ GANTI DENGAN IP LAPTOPMU
 
 export default function CameraSender() {
   const localVideoRef = useRef(null);
@@ -10,7 +10,6 @@ export default function CameraSender() {
   const streamRef = useRef(null);
   const [status, setStatus] = useState("Siap");
 
-  // Pembersihan otomatis saat komponen ditutup/unmount
   useEffect(() => {
     return () => {
       stopStream();
@@ -34,67 +33,62 @@ export default function CameraSender() {
 
   const startStream = async () => {
     try {
-      // Bersihkan koneksi lama terlebih dahulu jika ada klik ganda
       stopStream();
-
-      setStatus("Membuka Kamera...");
+      setStatus("Menyiapkan Kamera HD...");
       
-      // 1. Konek ke Python AI Server (Port 5002)
       socket.current = io(`http://${BACKEND_IP}:5002`);
 
-      // 2. Ambil Kamera Belakang HP tanpa Audio
+      // --- PERUBAHAN DISINI: CONFIG HD ---
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },  // Meminta lebar 1280px (HD)
+          height: { ideal: 720 },  // Meminta tinggi 720px (HD)
+          frameRate: { ideal: 30, max: 30 }
+        },
         audio: false
       });
       
       streamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-      // 3. Inisialisasi WebRTC Peer Connection
       peerConnection.current = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // STUN Server gratis Google
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
 
-      // 4. Masukkan track video kamera ke WebRTC
       stream.getTracks().forEach(track => {
         peerConnection.current.addTrack(track, stream);
       });
 
-      // 5. Kirim ICE Candidate jika ditemukan jalur jaringan
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate && socket.current) {
           socket.current.emit("webrtc-candidate", event.candidate);
         }
       };
 
-      // 6. Buat Penawaran Koneksi (Offer)
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
       socket.current.emit("webrtc-offer", offer);
-      setStatus("Streaming Berjalan... Cek Dashboard di Laptop!");
+      
+      setStatus("Streaming HD Aktif!");
 
-      // 7. Dengarkan Jawaban (Answer) dari Laptop/Python
       socket.current.on("webrtc-answer", async (answer) => {
         try {
-          // PENGAMAN: Hanya set remote description jika state lokal memang sedang menunggu penawaran (have-local-offer)
           if (peerConnection.current && peerConnection.current.signalingState === "have-local-offer") {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
           }
         } catch (err) {
-          console.error("Gagal memproses remote description (answer):", err);
+          console.error("Gagal Answer:", err);
         }
       });
 
-      // 8. Dengarkan kandidat jalur dari Laptop/Python
       socket.current.on("webrtc-candidate", async (candidate) => {
         try {
-          // PENGAMAN: Hanya tambahkan ICE candidate jika deskripsi remote (miliki laptop) sudah selesai dikonfigurasi
           if (peerConnection.current && peerConnection.current.remoteDescription) {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
           }
         } catch (err) {
-          console.error("Gagal menambahkan ICE candidate:", err);
+          console.error("Gagal ICE Candidate:", err);
         }
       });
 
@@ -106,17 +100,33 @@ export default function CameraSender() {
 
   return (
     <div className="p-6 max-w-md mx-auto text-center space-y-4">
-      <h2 className="text-xl font-bold">Kamera HP (WebRTC Sender)</h2>
-      <p className="text-sm bg-slate-100 p-2 rounded text-slate-600">Status: {status}</p>
-      <div className="bg-black rounded-xl overflow-hidden aspect-video">
-        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+      <div className="flex flex-col gap-1">
+        <h2 className="text-xl font-bold">Kamera HP (Sender)</h2>
+        <div className={`text-xs inline-block px-2 py-1 rounded-full mx-auto ${status.includes("Error") ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"}`}>
+          ● {status}
+        </div>
       </div>
+
+      <div className="bg-slate-900 rounded-2xl overflow-hidden aspect-video shadow-2xl border-4 border-white">
+        <video 
+          ref={localVideoRef} 
+          autoPlay 
+          playsInline 
+          muted 
+          className="w-full h-full object-cover mirror-mode" 
+        />
+      </div>
+
       <button 
         onClick={startStream}
-        className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow hover:bg-emerald-700 transition"
+        className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-emerald-700"
       >
-        Mulai Kirim Stream Kamera
+        Mulai Stream Kamera HD
       </button>
+
+      <p className="text-[10px] text-slate-400 italic">
+        Pastikan HP & Laptop di jaringan WiFi yang sama
+      </p>
     </div>
   );
 }

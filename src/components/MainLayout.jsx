@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Bell,
   User,
-  Smartphone
 } from 'lucide-react';
 
 // Mengimpor logo dari folder assets
@@ -39,26 +38,35 @@ const Sidebar = ({ setToken }) => {
       className="
         group fixed z-50 transition-all duration-300 ease-in-out
 
-        /* MOBILE: Floating Transparent Bottom Navigation (Glassmorphism) */
+        /* MOBILE */
         bottom-4 left-4 right-4 h-16 flex flex-row justify-between items-center px-4
         rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md
         shadow-[0_10px_30px_-5px_rgba(0,0,0,0.08)]
 
-        /* DESKTOP: Sidebar Reset (Kembali solid/tidak transparan) */
-        md:relative md:bottom-auto md:left-auto md:right-auto md:h-screen 
+        /* DESKTOP */
+        md:relative md:bottom-auto md:left-auto md:right-auto md:h-screen
         md:rounded-none md:border-0 md:border-r md:border-slate-200 md:shadow-none
         md:bg-white md:backdrop-blur-none
-        md:flex-col md:p-4 md:w-20 md:hover:w-64
-        md:items-start overflow-hidden
+        md:flex-col md:p-4
+        md:w-20 md:min-w-[80px] md:hover:w-64
+        md:items-start
+
+        overflow-hidden md:overflow-x-hidden
       "
     >
-      {/* CSS Injection untuk menyembunyikan scrollbar di mobile navbar */}
+      {/* CSS Injection untuk menyembunyikan scrollbar */}
       <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
       `}</style>
 
-      {/* LOGO SECTION */}
+      {/* LOGO */}
       <div className="hidden md:flex items-center gap-3 mb-8 w-full">
         <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
           <img
@@ -68,13 +76,29 @@ const Sidebar = ({ setToken }) => {
           />
         </div>
 
-        <div className="text-2xl font-black text-emerald-700 tracking-tight leading-none opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+        <div
+          className="
+            text-2xl font-black text-emerald-700 tracking-tight leading-none
+            whitespace-nowrap
+            opacity-0 -translate-x-2
+            md:group-hover:opacity-100
+            md:group-hover:translate-x-0
+            transition-all duration-300
+          "
+        >
           MAG<span className="text-slate-400 font-light">-SENSE</span>
         </div>
       </div>
 
-      {/* MENU NAVIGASI */}
-      <div className="flex flex-row md:flex-col flex-1 gap-2 justify-start items-center md:items-stretch overflow-x-auto md:overflow-y-auto no-scrollbar h-full md:h-auto md:w-full md:flex-1">
+      {/* MENU */}
+      <div
+        className="
+          flex flex-row md:flex-col flex-1 gap-2
+          justify-start items-center md:items-stretch
+          overflow-x-auto md:overflow-y-auto
+          no-scrollbar h-full md:h-auto md:w-full md:flex-1
+        "
+      >
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -85,26 +109,37 @@ const Sidebar = ({ setToken }) => {
               to={item.path}
               title={item.name}
               className={`
-                flex items-center p-2.5 md:p-3 rounded-xl transition-all duration-200 flex-shrink-0
+                flex items-center
+                p-2.5 md:p-3
+                rounded-xl
+                transition-all duration-200
+                flex-shrink-0
+                md:w-full
 
-                ${
-                  isActive
-                    ? 'bg-emerald-600 text-white md:shadow-lg md:shadow-emerald-200'
-                    : 'text-slate-500 hover:bg-slate-100/60 md:hover:bg-slate-100'
-                }
-
-                ${
-                  item.mobileOnly
-                    ? 'flex md:hidden'
-                    : ''
+                ${isActive
+                  ? 'bg-emerald-600 text-white md:shadow-lg md:shadow-emerald-200'
+                  : 'text-slate-500 hover:bg-slate-100/60 md:hover:bg-slate-100'
                 }
               `}
             >
+              {/* ICON */}
               <div className="flex items-center justify-center min-w-[24px]">
                 <Icon size={20} />
               </div>
 
-              <span className="hidden md:block ml-3 font-medium opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+              {/* TEXT */}
+              <span
+                className="
+                  hidden md:block
+                  ml-3 font-medium whitespace-nowrap
+
+                  opacity-0 -translate-x-2
+                  md:group-hover:opacity-100
+                  md:group-hover:translate-x-0
+
+                  transition-all duration-300
+                "
+              >
                 {item.name}
               </span>
             </Link>
@@ -112,21 +147,53 @@ const Sidebar = ({ setToken }) => {
         })}
       </div>
 
-      {/* TOMBOL LOGOUT */}
-      <div className="flex items-center h-full pl-3 border-l border-slate-200/60 flex-shrink-0 md:h-auto md:w-full md:mt-auto md:pt-4 md:border-t md:border-l-0 md:border-slate-100">
+      {/* LOGOUT */}
+      <div
+        className="
+          flex items-center h-full pl-3
+          border-l border-slate-200/60
+          flex-shrink-0
+
+          md:h-auto md:w-full md:mt-auto md:pt-4
+          md:border-t md:border-l-0 md:border-slate-100
+        "
+      >
         <button
           onClick={handleLogout}
           title="Logout"
-          className="flex items-center p-2.5 md:p-3 md:w-full rounded-xl text-red-500 hover:bg-red-50 transition-colors group/logout"
+          className="
+            flex items-center
+            p-2.5 md:p-3
+            md:w-full
+            rounded-xl
+            text-red-500
+            hover:bg-red-50
+            transition-colors
+            group/logout
+          "
         >
           <div className="flex items-center justify-center min-w-[24px]">
             <LogOut
               size={20}
-              className="md:group-hover/logout:-translate-x-1 transition-transform"
+              className="
+                md:group-hover/logout:-translate-x-1
+                transition-transform
+              "
             />
           </div>
 
-          <span className="hidden md:block ml-3 font-bold opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+          <span
+            className="
+              hidden md:block
+              ml-3 font-bold whitespace-nowrap
+
+              opacity-0 -translate-x-2
+              md:group-hover:opacity-100
+              md:group-hover:translate-x-0
+
+              transition-all duration-300
+            "
+          >
             Logout
           </span>
         </button>
@@ -159,8 +226,10 @@ const MainLayout = ({ setToken }) => {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
 
+      {/* SIDEBAR */}
       <Sidebar setToken={setToken} />
 
+      {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0 h-full pb-24 md:pb-0">
 
         {/* HEADER */}
@@ -179,7 +248,7 @@ const MainLayout = ({ setToken }) => {
               </h1>
             </div>
 
-            {/* RIGHT SECTION */}
+            {/* RIGHT */}
             <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
 
               <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
@@ -197,10 +266,10 @@ const MainLayout = ({ setToken }) => {
                   className={`
                     flex items-center gap-2 px-2 py-1 rounded-lg
                     cursor-pointer transition-all
-                    ${
-                      location.pathname === '/profile'
-                        ? 'bg-emerald-50 ring-1 ring-emerald-200'
-                        : 'hover:bg-slate-50'
+
+                    ${location.pathname === '/profile'
+                      ? 'bg-emerald-50 ring-1 ring-emerald-200'
+                      : 'hover:bg-slate-50'
                     }
                   `}
                 >
@@ -224,7 +293,7 @@ const MainLayout = ({ setToken }) => {
           </div>
         </header>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
             <Outlet />

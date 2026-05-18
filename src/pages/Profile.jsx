@@ -1,5 +1,6 @@
 // src/pages/Profile.jsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { User, Camera, Lock, KeyRound, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function Profile() {
@@ -11,6 +12,15 @@ export default function Profile() {
     email: 'admin@maggott.com',
     avatar: null, // Berisi URL objek gambar saat di-upload
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    axios.get('http://192.168.1.105:5000/api/profile', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => setProfile({ ...profile, name: res.data.username, email: res.data.email }))
+      .catch(err => console.error("Profile Fetch Error:", err));
+  }, []);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -57,17 +67,25 @@ export default function Profile() {
   };
 
   // Submit Perubahan Profil (Nama & Email)
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!profile.name.trim()) {
       showNotification('error', 'Nama pengguna tidak boleh kosong');
       return;
     }
-    showNotification('success', 'Informasi profil Anda berhasil diperbarui!');
+    const token = localStorage.getItem("token");
+    try {
+      await axios.put('http://192.168.1.105:5000/api/profile', { name: profile.name }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification('success', 'Informasi profil Anda berhasil diperbarui!');
+    } catch (err) {
+      showNotification('error', 'Gagal memperbarui profil');
+    }
   };
 
   // Submit Perubahan Password
-  const handleUpdatePassword = (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmPassword } = passwordData;
 
@@ -84,32 +102,38 @@ export default function Profile() {
       return;
     }
 
-    showNotification('success', 'Kata sandi Anda sukses diperbarui!');
-    // Reset form password setelah sukses
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const token = localStorage.getItem("token");
+    try {
+      await axios.put('http://192.168.1.105:5000/api/profile/password', { currentPassword, newPassword }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification('success', 'Kata sandi Anda sukses diperbarui!');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      showNotification('error', err.response?.data?.message || 'Gagal memperbarui kata sandi');
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      
+
       {/* BANNER NOTIFIKASI */}
       {status.message && (
-        <div className={`p-4 rounded-xl border flex items-center gap-3 transition-all animate-fadeIn ${
-          status.type === 'success' 
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+        <div className={`p-4 rounded-xl border flex items-center gap-3 transition-all animate-fadeIn ${status.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
             : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
+          }`}>
           {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
           <p className="text-sm font-semibold">{status.message}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
+
         {/* KARTU FOTO PROFIL */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
           <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider mb-4">Foto Profil</p>
-          
+
           <div className="relative group cursor-pointer" onClick={triggerFileInput}>
             <div className="w-28 h-28 rounded-full bg-slate-100 border-2 border-emerald-500 overflow-hidden flex items-center justify-center shadow-inner transition-transform group-hover:scale-105">
               {profile.avatar ? (
@@ -124,16 +148,16 @@ export default function Profile() {
             </div>
           </div>
 
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleAvatarChange} 
-            accept="image/*" 
-            className="hidden" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleAvatarChange}
+            accept="image/*"
+            className="hidden"
           />
 
-          <button 
-            onClick={triggerFileInput} 
+          <button
+            onClick={triggerFileInput}
             className="mt-4 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 py-1.5 px-4 rounded-xl transition-colors"
           >
             Pilih Foto Baru
@@ -144,12 +168,12 @@ export default function Profile() {
         {/* FORM DATA PENGGUNA */}
         <div className="md:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <h3 className="text-base font-bold text-slate-800 border-b pb-3 mb-4">Informasi Akun</h3>
-          
+
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="name"
                 value={profile.name}
                 onChange={handleProfileChange}
@@ -160,8 +184,8 @@ export default function Profile() {
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alamat Email</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 name="email"
                 value={profile.email}
                 onChange={handleProfileChange}
@@ -172,8 +196,8 @@ export default function Profile() {
             </div>
 
             <div className="pt-2">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-100 transition-all"
               >
                 <Save size={14} /> Simpan Perubahan
@@ -192,8 +216,8 @@ export default function Profile() {
         <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-2xl">
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kata Sandi Saat Ini</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               name="currentPassword"
               value={passwordData.currentPassword}
               onChange={handlePasswordChange}
@@ -205,8 +229,8 @@ export default function Profile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kata Sandi Baru</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 name="newPassword"
                 value={passwordData.newPassword}
                 onChange={handlePasswordChange}
@@ -216,8 +240,8 @@ export default function Profile() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Konfirmasi Kata Sandi Baru</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 name="confirmPassword"
                 value={passwordData.confirmPassword}
                 onChange={handlePasswordChange}
@@ -228,8 +252,8 @@ export default function Profile() {
           </div>
 
           <div className="pt-2">
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md shadow-slate-100 transition-all"
             >
               <KeyRound size={14} /> Perbarui Kata Sandi

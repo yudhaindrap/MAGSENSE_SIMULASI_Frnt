@@ -1,45 +1,36 @@
 // src/pages/Prediction.jsx
-import { useState } from 'react';
-import { 
-  CalendarClock, AlertTriangle, TrendingUp, 
-  Package, Timer, ChevronRight 
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import {
+  CalendarClock, AlertTriangle, TrendingUp,
+  Package, Timer, ChevronRight
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 
 export default function Prediction() {
-  // Data disesuaikan: Lantai 3 (Hampir Panen), Lantai 2 (Pertumbuhan), Lantai 1 (Penetasan)
-  const [predictions] = useState([
-    {
-      boxId: 3, floor: 3,
-      input: "Suhu 32.1°C, RH 75%, Media 65%",
-      dist: "92 Adult Larva, 35 Prepupa",
-      days: 5,
-      progress: 96,
-      status: "warning",
-      date: "24 Apr 2026"
-    },
-    {
-      boxId: 2, floor: 2,
-      input: "Suhu 29.5°C, RH 72%, Media 60%",
-      dist: "120 Larva Dewasa, 0 Prepupa",
-      days: 12,
-      progress: 55,
-      status: "safe",
-      date: "04 Mei 2026"
-    },
-    {
-      boxId: 1, floor: 1,
-      input: "Suhu 28.2°C, RH 68%, Media 55%",
-      dist: "Ribuan Telur/Penetasan, 15 Baby Larva",
-      days: 24,
-      progress: 10,
-      status: "safe",
-      date: "16 Mei 2026"
-    }
-  ]);
+  const [predictions, setPredictions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const fetchPredictions = () => {
+      axios.get('http://192.168.1.105:5000/api/predictions/all', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => {
+          setPredictions(res.data);
+          setLoading(false);
+        })
+        .catch(err => console.error("Predictions API Error:", err));
+    };
+
+    fetchPredictions();
+    const interval = setInterval(fetchPredictions, 15000); // Sinkron dengan cycle XGBoost (15s)
+    return () => clearInterval(interval);
+  }, []);
 
   // Mengurutkan data berdasarkan sisa hari terkecil (paling mendesak di atas)
   const sortedPredictions = [...predictions].sort((a, b) => a.days - b.days);
@@ -84,47 +75,47 @@ export default function Prediction() {
         </div>
       </div>
 
-    {/* SECTION 2: GRAFIK ESTIMASI */}
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <CalendarClock size={20} className="text-emerald-600"/>
-        Perbandingan Estimasi Panen
-    </h3>
-    <div className="h-[250px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-        {/* 1. Ubah margin left menjadi positif (misal: 10 atau 20) */}
-        <BarChart 
-            data={chartData} 
-            layout="vertical" 
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-            <XAxis type="number" hide />
-            
-            {/* 2. Tambahkan width pada YAxis agar label tidak tercekik */}
-            <YAxis 
-            dataKey="name" 
-            type="category" 
-            width={60} 
-            axisLine={false} 
-            tickLine={false} 
-            tick={{fill: '#64748b', fontWeight: 600, fontSize: 12}} 
-            />
-            
-            <Tooltip 
-            cursor={{fill: 'transparent'}} 
-            contentStyle={{borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} 
-            />
-            <Bar dataKey="sisa" radius={[0, 10, 10, 0]} barSize={30}>
-            {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-            </Bar>
-        </BarChart>
-        </ResponsiveContainer>
-    </div>
-    <p className="text-center text-xs text-slate-400 mt-2 italic">* Box dengan sisa hari paling sedikit ditampilkan paling atas</p>
-    </div>
+      {/* SECTION 2: GRAFIK ESTIMASI */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <CalendarClock size={20} className="text-emerald-600" />
+          Perbandingan Estimasi Panen
+        </h3>
+        <div className="h-[250px] w-full min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={250}>
+            {/* 1. Ubah margin left menjadi positif (misal: 10 atau 20) */}
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+              <XAxis type="number" hide />
+
+              {/* 2. Tambahkan width pada YAxis agar label tidak tercekik */}
+              <YAxis
+                dataKey="name"
+                type="category"
+                width={60}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#64748b', fontWeight: 600, fontSize: 12 }}
+              />
+
+              <Tooltip
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              />
+              <Bar dataKey="sisa" radius={[0, 10, 10, 0]} barSize={30}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-center text-xs text-slate-400 mt-2 italic">* Box dengan sisa hari paling sedikit ditampilkan paling atas</p>
+      </div>
 
       {/* SECTION 3: PREDICTION CARDS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -138,11 +129,11 @@ export default function Prediction() {
               </div>
               {pred.status === 'warning' && (
                 <div className="animate-bounce">
-                  <AlertTriangle size={24} className="text-orange-500"/>
+                  <AlertTriangle size={24} className="text-orange-500" />
                 </div>
               )}
             </div>
-            
+
             <div className="p-6">
               {/* Progress Bar */}
               <div className="mb-6">
@@ -151,7 +142,7 @@ export default function Prediction() {
                   <span className={pred.status === 'warning' ? 'text-orange-600' : 'text-emerald-600'}>{pred.progress}%</span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full rounded-full transition-all duration-1000 ${pred.status === 'warning' ? 'bg-orange-500' : 'bg-emerald-500'}`}
                     style={{ width: `${pred.progress}%` }}
                   ></div>
@@ -160,30 +151,30 @@ export default function Prediction() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 mt-1"><TrendingUp size={16}/></div>
+                  <div className="text-slate-400 mt-1"><TrendingUp size={16} /></div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Status Mikroklimat</p>
                     <p className="text-xs text-slate-600 font-medium leading-tight">{pred.input}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 mt-1"><Package size={16}/></div>
+                  <div className="text-slate-400 mt-1"><Package size={16} /></div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Analisis Visual</p>
                     <p className="text-xs text-slate-600 font-medium leading-tight">{pred.dist}</p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="relative p-5 bg-slate-900 rounded-2xl overflow-hidden shadow-inner">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10"></div>
-                
+
                 <div className="relative z-10 flex flex-col items-center">
                   <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] mb-1">Prediksi Panen</p>
                   <p className="text-lg font-bold text-white mb-3">{pred.date}</p>
-                  
+
                   <div className="h-[1px] w-full bg-white/10 mb-3"></div>
-                  
+
                   <div className="flex items-baseline gap-1">
                     <span className={`text-4xl font-black ${pred.status === 'warning' ? 'text-orange-400' : 'text-emerald-400'}`}>
                       {pred.days}
@@ -195,7 +186,7 @@ export default function Prediction() {
 
               {pred.status === 'warning' && (
                 <button className="w-full mt-4 py-3 bg-orange-100 text-orange-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-200 transition-colors flex items-center justify-center gap-2">
-                  Siapkan Logistik Panen <ChevronRight size={14}/>
+                  Siapkan Logistik Panen <ChevronRight size={14} />
                 </button>
               )}
             </div>

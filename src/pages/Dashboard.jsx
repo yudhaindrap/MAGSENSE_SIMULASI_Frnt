@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import {
@@ -18,7 +18,7 @@ import {
     X       // Tambahan untuk ikon tutup modal
 } from 'lucide-react';
 
-const socket = io('http://192.168.1.27:5000');
+const socket = io('http://192.168.1.105:5000');
 
 export default function Dashboard() {
     const [staticData, setStaticData] = useState({
@@ -27,6 +27,7 @@ export default function Dashboard() {
     });
 
     const [realtimeBox, setRealtimeBox] = useState(null);
+    const activeBoxIndexRef = useRef(0);
 
     /* ========================================================
        STATE & HANDLER TAMBAHAN UNTUK PINDAH RUANG (PILIHAN 2)
@@ -47,10 +48,10 @@ export default function Dashboard() {
             ...prev,
             summary: prev.summary.map(b => b.box_id === selectedBox.box_id ? { ...b, room: tempRoom } : b)
         }));
-        
+
         setIsModalOpen(false);
         console.log(`Box #${selectedBox.box_id} berhasil dipindahkan ke ${tempRoom}`);
-        
+
         // CATATAN: Jika backend route sudah siap, kamu tinggal mengaktifkan baris di bawah ini:
         // const token = localStorage.getItem("token");
         // axios.put(`http://192.168.1.7:5000/api/boxes/${selectedBox.box_id}/room`, { room: tempRoom }, {
@@ -63,52 +64,78 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
 
         const fetchSummary = () => {
-            axios.get('http://192.168.18.228:5000/api/dashboard', {
+            axios.get('http://192.168.1.105:5000/api/dashboard', {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            .then(res => {
-                setStaticData(prev => ({
-                    ...prev,
-                    summary: res.data.summary || []
-                }));
-            })
-            .catch(err => console.error("Dashboard API Error:", err));
+                .then(res => {
+                    setStaticData(prev => ({
+                        ...prev,
+                        summary: res.data.summary || []
+                    }));
+                })
+                .catch(err => console.error("Dashboard API Error:", err));
         };
 
-        axios.get('http://192.168.18.228:5000/api/history', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-            if (res.data.length > 0) {
-                const lastData = res.data[0];
-                setRealtimeBox({
-                    box_id: lastData.box_id,
-                    temperature: lastData.air_temp,
-                    humidity: lastData.air_humidity,
-                    media_humidity: lastData.media_humidity,
-                    cv_latest: { phase: "Monitoring", confidence: 100 },
-                    actuators: { fan_in: false, pump: false, heater: false },
-                    harvest_est: 5
-                });
-            }
-        });
+        // Setup API polling strategy untuk mengambil data gabungan (Sensor + ML + CV) secara live.
+        const fetchLatestLiveDetails = () => {
+            const boxes = [1, 2, 3];
+            const focusBoxId = boxes[activeBoxIndexRef.current];
+            axios.get(`http://192.168.1.105:5000/api/dashboard/latest/${focusBoxId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(res => {
+                    const liveData = res.data;
 
+                    // Mapped to strict existing JSX requirements unconditionally
+                    setRealtimeBox({
+                        box_id: liveData.box_id,
+                        temperature: liveData.air_temp,
+                        humidity: liveData.air_humidity,
+                        media_humidity: liveData.media_humidity,
+                        cv_latest: {
+                            phase: liveData.cv_latest.phase,
+                            confidence: liveData.cv_latest.confidence,
+                            counts: liveData.cv_latest.counts
+                        },
+                        actuators: {
+                            fan_in: liveData.actuators.fan_in,
+                            pump: liveData.actuators.pump,
+                            heater: liveData.actuators.heater
+                        },
+                        harvest_est: liveData.harvest_est
+                    });
+                })
+                .catch(err => {
+                    console.error("Live Data Fetch Error (Pastikan Simulator ESP32 & CV Berjalan):", err);
+                });
+        };
+
+        // Fetch immediately, then setup continuous syncing loop
         fetchSummary();
+        fetchLatestLiveDetails();
+
+        // Sync every 5 seconds (Matches Simulasi ESP32 pace)
+        const pollingInterval = setInterval(() => {
+            activeBoxIndexRef.current = (activeBoxIndexRef.current + 1) % 3;
+            fetchLatestLiveDetails();
+            fetchSummary();
+        }, 5000);
 
         socket.on('telemetry_update', (data) => {
-            setRealtimeBox({
-                box_id: data.box_id,
-                temperature: data.temperature,
-                humidity: data.humidity,
-                media_humidity: data.media_humidity,
-                cv_latest: { phase: data.phase, confidence: data.confidence },
-                actuators: { fan_in: data.fan_in, pump: data.pump, heater: data.heater },
-                harvest_est: data.harvest_est
-            });
-            fetchSummary();
+            // Optional socket backup listener if needed, but primary is API polling
+            fetchLatestLiveDetails();
         });
 
-        return () => socket.off('telemetry_update');
+        socket.on('ml_harvest_update', (data) => {
+            // Trigger UI update when backend finishes an ML inference cycle
+            fetchLatestLiveDetails();
+        });
+
+        return () => {
+            clearInterval(pollingInterval);
+            socket.off('telemetry_update');
+            socket.off('ml_harvest_update');
+        };
     }, []);
 
     return (
@@ -133,7 +160,7 @@ export default function Dashboard() {
                     <Activity size={20} className="text-emerald-600" />
                     <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wider">Dashboard Ringkasan</h2>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {staticData.summary.length > 0 ? (
                         staticData.summary.map(box => (
@@ -149,7 +176,7 @@ export default function Dashboard() {
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-xl font-bold text-emerald-700">#{box.box_id}</h3>
                                         {/* Tombol Aksi Pindah Ruang */}
-                                        <button 
+                                        <button
                                             onClick={() => openMoveModal(box)}
                                             title="Pindahkan Ruangan"
                                             className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"
@@ -167,9 +194,15 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                                         <div className="flex items-center gap-2 text-slate-500 text-xs">
-                                            <Droplets size={14} /> Kelembapan
+                                            <Droplets size={14} /> Hum. Udara
                                         </div>
                                         <span className="font-bold text-slate-700">{Number(box.avg_humidity).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                                        <div className="flex items-center gap-2 text-slate-500 text-xs">
+                                            <Wind size={14} /> Hum. Media
+                                        </div>
+                                        <span className="font-bold text-slate-700">{Number(box.avg_media_humidity || 0).toFixed(1)}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -188,7 +221,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                            <Zap size={18} className="text-yellow-500" /> 
+                            <Zap size={18} className="text-yellow-500" />
                             STATUS REAL-TIME {realtimeBox && `BOX #${realtimeBox.box_id}`}
                         </h2>
                         {realtimeBox && (
@@ -297,7 +330,7 @@ export default function Dashboard() {
             {isModalOpen && selectedBox && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100 mx-4 space-y-4">
-                        
+
                         {/* Header Modal */}
                         <div className="flex justify-between items-center">
                             <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
@@ -330,13 +363,13 @@ export default function Dashboard() {
 
                         {/* Tombol Konfirmasi */}
                         <div className="flex gap-3 pt-2">
-                            <button 
+                            <button
                                 onClick={() => setIsModalOpen(false)}
                                 className="flex-1 py-2.5 border rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                             >
                                 Batal
                             </button>
-                            <button 
+                            <button
                                 onClick={handleSaveLocation}
                                 className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors"
                             >
