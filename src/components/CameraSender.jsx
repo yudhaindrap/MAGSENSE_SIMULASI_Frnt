@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const BACKEND_IP = "192.168.1.105"; // ⚠️ GANTI DENGAN IP LAPTOPMU
+const BACKEND_IP = "10.251.238.73"; // ⚠️ GANTI DENGAN IP LAPTOPMU
 
 export default function CameraSender() {
   const localVideoRef = useRef(null);
@@ -35,12 +35,12 @@ export default function CameraSender() {
     try {
       stopStream();
       setStatus("Menyiapkan Kamera HD...");
-      
+
       socket.current = io(`http://${BACKEND_IP}:5002`);
 
       // --- PERUBAHAN DISINI: CONFIG HD ---
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: 'environment',
           width: { ideal: 1280 },  // Meminta lebar 1280px (HD)
           height: { ideal: 720 },  // Meminta tinggi 720px (HD)
@@ -48,7 +48,7 @@ export default function CameraSender() {
         },
         audio: false
       });
-      
+
       streamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
@@ -69,7 +69,7 @@ export default function CameraSender() {
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
       socket.current.emit("webrtc-offer", offer);
-      
+
       setStatus("Streaming HD Aktif!");
 
       socket.current.on("webrtc-answer", async (answer) => {
@@ -108,16 +108,16 @@ export default function CameraSender() {
       </div>
 
       <div className="bg-slate-900 rounded-2xl overflow-hidden aspect-video shadow-2xl border-4 border-white">
-        <video 
-          ref={localVideoRef} 
-          autoPlay 
-          playsInline 
-          muted 
-          className="w-full h-full object-cover mirror-mode" 
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover mirror-mode"
         />
       </div>
 
-      <button 
+      <button
         onClick={startStream}
         className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-emerald-700"
       >

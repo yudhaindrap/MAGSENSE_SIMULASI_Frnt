@@ -18,7 +18,7 @@ import {
     X       // Tambahan untuk ikon tutup modal
 } from 'lucide-react';
 
-const socket = io('http://192.168.1.105:5000');
+const socket = io('http://10.251.238.73:5000');
 
 export default function Dashboard() {
     const [staticData, setStaticData] = useState({
@@ -64,7 +64,7 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
 
         const fetchSummary = () => {
-            axios.get('http://192.168.1.105:5000/api/dashboard', {
+            axios.get('http://10.251.238.73:5000/api/dashboard', {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => {
@@ -80,7 +80,7 @@ export default function Dashboard() {
         const fetchLatestLiveDetails = () => {
             const boxes = [1, 2, 3];
             const focusBoxId = boxes[activeBoxIndexRef.current];
-            axios.get(`http://192.168.1.105:5000/api/dashboard/latest/${focusBoxId}`, {
+            axios.get(`http://10.251.238.73:5000/api/dashboard/latest/${focusBoxId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => {

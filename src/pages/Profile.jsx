@@ -15,7 +15,7 @@ export default function Profile() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get('http://192.168.1.105:5000/api/profile', {
+    axios.get('http://10.251.238.73:5000/api/profile', {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => setProfile({ ...profile, name: res.data.username, email: res.data.email }))
@@ -75,7 +75,7 @@ export default function Profile() {
     }
     const token = localStorage.getItem("token");
     try {
-      await axios.put('http://192.168.1.105:5000/api/profile', { name: profile.name }, {
+      await axios.put('http://10.251.238.73:5000/api/profile', { name: profile.name }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showNotification('success', 'Informasi profil Anda berhasil diperbarui!');
@@ -104,7 +104,7 @@ export default function Profile() {
 
     const token = localStorage.getItem("token");
     try {
-      await axios.put('http://192.168.1.105:5000/api/profile/password', { currentPassword, newPassword }, {
+      await axios.put('http://10.251.238.73:5000/api/profile/password', { currentPassword, newPassword }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showNotification('success', 'Kata sandi Anda sukses diperbarui!');
@@ -120,8 +120,8 @@ export default function Profile() {
       {/* BANNER NOTIFIKASI */}
       {status.message && (
         <div className={`p-4 rounded-xl border flex items-center gap-3 transition-all animate-fadeIn ${status.type === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-red-50 border-red-200 text-red-800'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          : 'bg-red-50 border-red-200 text-red-800'
           }`}>
           {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
           <p className="text-sm font-semibold">{status.message}</p>

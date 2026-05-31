@@ -10,15 +10,7 @@ import {
   Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 
-// Data Mock untuk Grafik (Tren 24 Jam Terakhir)
-const chartData = [
-  { time: '00:00', temp: 26, hum: 70 },
-  { time: '04:00', temp: 25, hum: 75 },
-  { time: '08:00', temp: 28, hum: 68 },
-  { time: '12:00', temp: 31, hum: 60 },
-  { time: '16:00', temp: 29, hum: 65 },
-  { time: '20:00', temp: 27, hum: 72 },
-];
+// Data Mock untuk Grafik dihapus, kita menggunakan fetch API dari chartsRoutes (real database data)
 
 // 1. DAFTAR AKTUATOR DIPERBARUI (Menambahkan Lampu Heater)
 const AVAILABLE_ACTUATORS = ['Kipas Exhaust', 'Solenoid Valve', 'Lampu Heater'];
@@ -34,8 +26,8 @@ export default function Monitoring() {
     const fetchData = async () => {
       try {
         const [boxRes, chartRes] = await Promise.all([
-          axios.get('http://192.168.1.105:5000/api/monitoring/all', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('http://192.168.1.105:5000/api/charts/1', { headers: { Authorization: `Bearer ${token}` } })
+          axios.get('http://10.251.238.73:5000/api/monitoring/all', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('http://10.251.238.73:5000/api/charts/1', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setBoxes(boxRes.data);
         setChartData(chartRes.data);
@@ -61,7 +53,7 @@ export default function Monitoring() {
 
     try {
       // 1. Kirim perintah ke Backend (MQTT Bridge)
-      await axios.post('http://192.168.1.105:5000/api/actuators/toggle', {
+      await axios.post('http://10.251.238.73:5000/api/actuators/toggle', {
         box_id: boxId,
         actuator: actuatorName,
         state: newState
@@ -162,7 +154,8 @@ export default function Monitoring() {
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               />
               <Area type="monotone" dataKey="temp" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorTemp)" name="Suhu (°C)" />
-              <Area type="monotone" dataKey="hum" stroke="#3b82f6" strokeWidth={3} fillOpacity={0} name="Kelembapan (%)" />
+              <Area type="monotone" dataKey="hum" stroke="#3b82f6" strokeWidth={3} fillOpacity={0} name="Kelembapan Udara (%)" />
+              <Area type="monotone" dataKey="media_hum" stroke="#f59e0b" strokeWidth={3} fillOpacity={0} name="Kelembapan Media (%)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
